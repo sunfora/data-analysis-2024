@@ -39,21 +39,31 @@ def load_state(path):
     return True
 
 def load():
-    if save.exists():
-        print("loading from save")
-        try:
-            return load_state(save)
-        except Exception:
-            print("corrupted save")
-        if temp.exists():
-            print("found temp")
-            print("loading from temp")
+    def load_save():
+        if save.exists():
+            print("loading from save")
             try:
-                return load_state(temp)
+                return load_state(save)
             except Exception:
-                print("corrupted save at temp")
-        raise ValueError("corrupted unrecoverable save")
-    return False 
+                print("corrupted save")
+            if temp.exists():
+                print("found temp")
+                print("loading from temp")
+                try:
+                    return load_state(temp)
+                except Exception:
+                    print("corrupted save at temp")
+            raise ValueError("corrupted unrecoverable save")
+        return False
+
+    load_save()
+
+    with open("freq") as file:
+        lines = [*map(parse_line, file.readlines())]
+        freq = { word : cnt for (word, cnt) in lines }
+        # skip to where we ended
+        lines = islice(iter(lines), processed, None)
+    return freq, lines
 
 def dump(file):
     file.seek(0)
@@ -65,11 +75,18 @@ def dump(file):
     file.truncate()
     file.flush()
     
-def update_save():
+def save_progress():
+    # first dump to temporary
     with open(temp, "w") as file:
         dump(file)
+    # so if data is lost here
+    # we can revert back
     with open(save, "w") as file:
         dump(file)
+
+def word_freq(word):
+    global freq
+    return 0 if word not in freq else freq[word]
 
 # interactive
 def ask_commit(word, pair):
@@ -80,7 +97,11 @@ def ask_commit(word, pair):
         elif pair is None:
             print(f"drop {word}")
         else:
-            print(f"{word} -> {pair}")
+            words = pair.split()
+            print(f"{word} ({word_freq(word)}) ->", end="")
+            for x in words:
+                print(f" {x} ({word_freq(x)})", end="")
+            print()
         result = input("Y/N: ").strip().lower()
         if result == "y":
             return True
@@ -88,13 +109,14 @@ def ask_commit(word, pair):
             return False
 
 def resolve(pair, results):
+    global freq
     while True:
         os.system('cls||clear')
         print(f"processed: {processed}")
         word, cnt = pair
         print("misspelled:", word, cnt)
         for i, r in enumerate(results):
-            print(f"{i})", r)
+            print(f"{i})", r, f"({word_freq(r)})")
         print("*) custom")
         print("+) keep")
         print("-) drop")
@@ -121,30 +143,33 @@ def parse_line(line):
     word, cnt = line.strip().split()
     return word, int(cnt)
 
-with open("freq") as file:
-    lines = map(parse_line, file.readlines())
-    # skip to where we ended
-    lines = islice(iter(lines), processed, None)
-
 # create spellchecker
 russian = enchant.Dict("ru_RU")
+freq, lines = load()
 
-with open(temp, "w") as temp:
-    for word, cnt in lines:
-        os.system('cls||clear')
-        print(f"processed: {processed}")
+for word, cnt in lines:
+    os.system('cls||clear')
+    print(f"processed: {processed}")
 
-        update_save()
+    save_progress()
 
-        if russian.check(word):
+    if russian.check(word):
+        good.append(word)
+    elif word.startswith("е") and word.removeprefix("е").isdigit(): 
+        # autoresolve most of foodcodes
+        # here е is russian
+        word_map.append((word, word.replace("е", "e")))
+    elif word.startswith("e") and word.removeprefix("e").isdigit(): 
+        # autoresolve most of foodcodes
+        # here e is english (proper one)
+        good.append(word)
+    else:
+        word, repl = resolve(
+            (word, cnt), russian.suggest(word)
+        )
+        if word == repl:
             good.append(word)
-        else:
-            word, repl = resolve(
-                (word, cnt), russian.suggest(word)
-            )
-            if word == repl:
-                good.append(word)
-            elif repl is not None:
-                word_map.append((word, repl))
+        elif repl is not None:
+            word_map.append((word, repl))
 
-        processed += 1
+    processed += 1
