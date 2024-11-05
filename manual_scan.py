@@ -147,6 +147,8 @@ def parse_line(line):
 russian = enchant.Dict("ru_RU")
 freq, lines = load()
 
+failureOCV = str.maketrans("ykehxapocmtb", "укенхаросмтв")
+
 for word, cnt in lines:
     os.system('cls||clear')
     print(f"processed: {processed}")
@@ -163,6 +165,8 @@ for word, cnt in lines:
         # autoresolve most of foodcodes
         # here e is english (proper one)
         good.append(word)
+    elif russian.check(ocv := word.translate(failureOCV)):
+        word_map.append((word, ocv))
     else:
         word, repl = resolve(
             (word, cnt), russian.suggest(word)
