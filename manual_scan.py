@@ -116,7 +116,10 @@ def resolve(pair, results):
         word, cnt = pair
         print("misspelled:", word, cnt)
         for i, r in enumerate(results):
-            print(f"{i})", r, f"({word_freq(r)})")
+            if russian.is_added(r):
+                print(f"{i}) [{r}] ({word_freq(r)})")
+            else:
+                print(f"{i}) {r} ({word_freq(r)})")
         print("*) custom")
         print("+) keep")
         print("-) drop")
@@ -146,11 +149,14 @@ def parse_line(line):
 # create spellchecker
 russian = enchant.Dict("ru_RU")
 
-for word in good:
-    if not russian.check(word):
-        russian.add_to_session(word)
 
 freq, lines = load()
+
+for word in good:
+    russian.add_to_session(word)
+for _, r in word_map:
+    for word in r.split():
+        russian.add_to_session(word)
 
 failureOCV = str.maketrans("ykehxapocmtb", "укенхаросмтв")
 
@@ -170,15 +176,32 @@ for word, cnt in lines:
         # autoresolve most of foodcodes
         # here e is english (proper one)
         good.append(word)
+        russian.add_to_session(word)
     elif russian.check(ocv := word.translate(failureOCV)):
         word_map.append((word, ocv))
     else:
+        suggested = russian.suggest(word) 
+        prefixed = [*set(
+            [wrd for wrd in good if wrd.startswith(word)] +
+            [wrd for _, r in word_map 
+                 for wrd in r.split() 
+                 if wrd.startswith(word)]
+        )]
+        
+        for wrd in prefixed:
+            if wrd not in suggested:
+                suggested.append(wrd)
+
         word, repl = resolve(
-            (word, cnt), russian.suggest(word)
+            (word, cnt), 
+            suggested
         )
         if word == repl:
             good.append(word)
+            russian.add_to_session(word)
         elif repl is not None:
             word_map.append((word, repl))
+            for wrd in repl.split():
+                russian.add_to_session(wrd)
 
     processed += 1
