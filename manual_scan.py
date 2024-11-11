@@ -145,6 +145,11 @@ def parse_line(line):
 
 # create spellchecker
 russian = enchant.Dict("ru_RU")
+
+for word in good:
+    if not russian.check(word):
+        russian.add_to_session(word)
+
 freq, lines = load()
 
 failureOCV = str.maketrans("ykehxapocmtb", "укенхаросмтв")
