@@ -88,10 +88,14 @@ def word_freq(word):
     global freq
     return 0 if word not in freq else freq[word]
 
+def clear_screen():
+    os.system('cls||clear')
+
+
 # interactive
 def ask_commit(word, pair):
     while True:
-        os.system('cls||clear')
+        clear_screen()
         if word == pair:
             print(f"keep {word}")
         elif pair is None:
@@ -111,15 +115,15 @@ def ask_commit(word, pair):
 def resolve(pair, results):
     global freq
     while True:
-        os.system('cls||clear')
-        print(f"processed: {processed}")
+        clear_screen()
+        print(f"processed: \033[93m{processed}\033[0m")
         word, cnt = pair
         print("misspelled:", word, cnt)
         for i, r in enumerate(results):
             if russian.is_added(r):
-                print(f"{i}) [{r}] ({word_freq(r)})")
+                print(f"{i}) \033[92m{r}\033[0m ({word_freq(r)})")
             else:
-                print(f"{i}) {r} ({word_freq(r)})")
+                print(f"{i}) \033[94m{r}\033[0m ({word_freq(r)})")
         print("*) custom")
         print("+) keep")
         print("-) drop")
@@ -159,49 +163,53 @@ for _, r in word_map:
         russian.add_to_session(word)
 
 failureOCV = str.maketrans("ykehxapocmtb", "укенхаросмтв")
+try:
+    for word, cnt in lines:
+        clear_screen()
+        print(f"processed: {processed}")
 
-for word, cnt in lines:
-    os.system('cls||clear')
-    print(f"processed: {processed}")
+        save_progress()
 
-    save_progress()
-
-    if russian.check(word):
-        good.append(word)
-    elif word.startswith("е") and word.removeprefix("е").isdigit(): 
-        # autoresolve most of foodcodes
-        # here е is russian
-        word_map.append((word, word.replace("е", "e")))
-    elif word.startswith("e") and word.removeprefix("e").isdigit(): 
-        # autoresolve most of foodcodes
-        # here e is english (proper one)
-        good.append(word)
-        russian.add_to_session(word)
-    elif russian.check(ocv := word.translate(failureOCV)):
-        word_map.append((word, ocv))
-    else:
-        suggested = russian.suggest(word) 
-        prefixed = [*set(
-            [wrd for wrd in good if wrd.startswith(word)] +
-            [wrd for _, r in word_map 
-                 for wrd in r.split() 
-                 if wrd.startswith(word)]
-        )]
-        
-        for wrd in prefixed:
-            if wrd not in suggested:
-                suggested.append(wrd)
-
-        word, repl = resolve(
-            (word, cnt), 
-            suggested
-        )
-        if word == repl:
+        if russian.check(word):
+            good.append(word)
+        elif word.startswith("е") and word.removeprefix("е").isdigit(): 
+            # autoresolve most of foodcodes
+            # here е is russian
+            word_map.append((word, word.replace("е", "e")))
+        elif word.startswith("e") and word.removeprefix("e").isdigit(): 
+            # autoresolve most of foodcodes
+            # here e is english (proper one)
             good.append(word)
             russian.add_to_session(word)
-        elif repl is not None:
-            word_map.append((word, repl))
-            for wrd in repl.split():
-                russian.add_to_session(wrd)
+        elif russian.check(ocv := word.translate(failureOCV)):
+            word_map.append((word, ocv))
+        else:
+            suggested = russian.suggest(word) 
+            prefixed = [*set(
+                [wrd for wrd in good if wrd.startswith(word)] +
+                [wrd for _, r in word_map 
+                     for wrd in r.split() 
+                     if wrd.startswith(word)]
+            )]
+            
+            for wrd in prefixed:
+                if wrd not in suggested:
+                    suggested.append(wrd)
 
-    processed += 1
+            word, repl = resolve(
+                (word, cnt), 
+                suggested
+            )
+            if word == repl:
+                good.append(word)
+                russian.add_to_session(word)
+            elif repl is not None:
+                word_map.append((word, repl))
+                for wrd in repl.split():
+                    russian.add_to_session(wrd)
+
+        processed += 1
+except KeyboardInterrupt:
+    clear_screen()
+    print(f"Done: \033[5;93m{processed}\033[0m")
+    pass
