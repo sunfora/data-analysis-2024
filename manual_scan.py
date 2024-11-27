@@ -1,7 +1,9 @@
 import os
 from pathlib import Path
 from itertools import islice
+from subprocess import run
 import enchant
+import re
 
 # bunch of global state values
 good = []
@@ -11,6 +13,16 @@ processed = 0
 # state managing
 save = Path("manual").with_suffix('.save')
 temp = save.with_suffix(".temp")
+
+cyrillic_letter = re.compile("[а-яА-Я]")
+def cyrillic(c):
+    return cyrillic_letter.fullmatch(c)
+
+def colorize_letters(word):
+    return "".join([
+        f"\033[93m{c}\033[0m" if cyrillic(c) else "\033[91m{c}\033[0m"
+            for c in word
+    ])
 
 def load_from_lines(lines):
     global good
@@ -118,7 +130,7 @@ def resolve(pair, results):
         clear_screen()
         print(f"processed: \033[93m{processed}\033[0m")
         word, cnt = pair
-        print("misspelled:", word, cnt)
+        print("misspelled:", colorize_letters(word), cnt)
         for i, r in enumerate(results):
             if russian.is_added(r):
                 print(f"{i}) \033[92m{r}\033[0m ({word_freq(r)})")
@@ -131,10 +143,11 @@ def resolve(pair, results):
         print("f) google in firefox")
 
         resolve = input("your decision: ").strip()
+        query = f"https://google.com/search?q={word}"
         if resolve == 'w':
-            run(f"w3m https://google.com/search?q={word}")
+            run(["w3m", query])
         elif resolve == "f":
-            run(f"firefox https://google.com/search?q={word}")
+            run(["firefox", query])
         elif resolve == '*':
             custom = input().strip()
             if ask_commit(word, custom):
