@@ -127,10 +127,15 @@ def resolve(pair, results):
         print("*) custom")
         print("+) keep")
         print("-) drop")
+        print("w) google in w3m")
+        print("f) google in firefox")
 
         resolve = input("your decision: ").strip()
-
-        if resolve == '*':
+        if resolve == 'w':
+            run(f"w3m https://google.com/search?q={word}")
+        elif resolve == "f":
+            run(f"firefox https://google.com/search?q={word}")
+        elif resolve == '*':
             custom = input().strip()
             if ask_commit(word, custom):
                 return word, custom 
