@@ -20,7 +20,7 @@ def cyrillic(c):
 
 def colorize_letters(word):
     return "".join([
-        f"\033[93m{c}\033[0m" if cyrillic(c) else "\033[91m{c}\033[0m"
+        f"\033[93m{c}\033[0m" if cyrillic(c) else f"\033[91m{c}\033[0m"
             for c in word
     ])
 
