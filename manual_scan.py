@@ -14,7 +14,7 @@ processed = 0
 save = Path("manual").with_suffix('.save')
 temp = save.with_suffix(".temp")
 
-cyrillic_letter = re.compile("[а-яА-Я]")
+cyrillic_letter = re.compile("[ёЁа-яА-Я]")
 def cyrillic(c):
     return cyrillic_letter.fullmatch(c)
 
@@ -114,9 +114,9 @@ def ask_commit(word, pair):
             print(f"drop {word}")
         else:
             words = pair.split()
-            print(f"{word} ({word_freq(word)}) ->", end="")
+            print(f"{colorize_letters(word)} ({word_freq(word)}) ->", end="")
             for x in words:
-                print(f" {x} ({word_freq(x)})", end="")
+                print(f" {colorize_letters(x)} ({word_freq(x)})", end="")
             print()
         result = input("Y/N: ").strip().lower()
         if result == "y":
