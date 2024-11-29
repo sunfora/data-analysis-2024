@@ -228,6 +228,7 @@ try:
 
         processed += 1
 except KeyboardInterrupt:
+    pass
+finally:
     clear_screen()
     print(f"Done: \033[5;93m{processed}\033[0m")
-    pass
