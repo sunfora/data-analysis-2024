@@ -25,10 +25,6 @@ def colorize_letters(word):
     ])
 
 def load_from_lines(lines):
-    global good
-    global word_map
-    global processed
-
     a, b, c = lines
     
     good = eval(a)
@@ -47,28 +43,31 @@ def load_from_lines(lines):
 def load_state(path):
     with open(path) as file:
         lines = file.readlines()
-    load_from_lines(lines)
-    return True
+    return load_from_lines(lines)
+
+def load_save():
+    if save.exists():
+        print("loading from save")
+        try:
+            return load_state(save)
+        except Exception:
+            print("corrupted save")
+        if temp.exists():
+            print("found temp")
+            print("loading from temp")
+            try:
+                return load_state(temp)
+            except Exception:
+                print("corrupted save at temp")
+        raise ValueError("corrupted unrecoverable save")
+    raise ValueError("save does not exist")
 
 def load():
-    def load_save():
-        if save.exists():
-            print("loading from save")
-            try:
-                return load_state(save)
-            except Exception:
-                print("corrupted save")
-            if temp.exists():
-                print("found temp")
-                print("loading from temp")
-                try:
-                    return load_state(temp)
-                except Exception:
-                    print("corrupted save at temp")
-            raise ValueError("corrupted unrecoverable save")
-        return False
+    global good
+    global word_map
+    global processed
 
-    load_save()
+    good, word_map, processed = load_save()
 
     with open("freq") as file:
         lines = [*map(parse_line, file.readlines())]
@@ -102,7 +101,6 @@ def word_freq(word):
 
 def clear_screen():
     os.system('cls||clear')
-
 
 # interactive
 def ask_commit(word, pair):
@@ -168,67 +166,68 @@ def parse_line(line):
     word, cnt = line.strip().split()
     return word, int(cnt)
 
-# create spellchecker
-russian = enchant.Dict("ru_RU")
+if __name__ == "__main__":
+    # create spellchecker
+    russian = enchant.Dict("ru_RU")
 
 
-freq, lines = load()
+    freq, lines = load()
 
-for word in good:
-    russian.add_to_session(word)
-for _, r in word_map:
-    for word in r.split():
+    for word in good:
         russian.add_to_session(word)
-
-failureOCV = str.maketrans("ykehxapocmtb", "укенхаросмтв")
-try:
-    for word, cnt in lines:
-        clear_screen()
-        print(f"processed: {processed}")
-
-        save_progress()
-
-        if russian.check(word):
-            good.append(word)
-        elif word.startswith("е") and word.removeprefix("е").isdigit(): 
-            # autoresolve most of foodcodes
-            # here е is russian
-            word_map.append((word, word.replace("е", "e")))
-        elif word.startswith("e") and word.removeprefix("e").isdigit(): 
-            # autoresolve most of foodcodes
-            # here e is english (proper one)
-            good.append(word)
+    for _, r in word_map:
+        for word in r.split():
             russian.add_to_session(word)
-        elif russian.check(ocv := word.translate(failureOCV)):
-            word_map.append((word, ocv))
-        else:
-            suggested = russian.suggest(word) 
-            prefixed = [*set(
-                [wrd for wrd in good if wrd.startswith(word)] +
-                [wrd for _, r in word_map 
-                     for wrd in r.split() 
-                     if wrd.startswith(word)]
-            )]
-            
-            for wrd in prefixed:
-                if wrd not in suggested:
-                    suggested.append(wrd)
 
-            word, repl = resolve(
-                (word, cnt), 
-                suggested
-            )
-            if word == repl:
+    failureOCV = str.maketrans("ykehxapocmtb", "укенхаросмтв")
+    try:
+        for word, cnt in lines:
+            clear_screen()
+            print(f"processed: {processed}")
+
+            save_progress()
+
+            if russian.check(word):
+                good.append(word)
+            elif word.startswith("е") and word.removeprefix("е").isdigit(): 
+                # autoresolve most of foodcodes
+                # here е is russian
+                word_map.append((word, word.replace("е", "e")))
+            elif word.startswith("e") and word.removeprefix("e").isdigit(): 
+                # autoresolve most of foodcodes
+                # here e is english (proper one)
                 good.append(word)
                 russian.add_to_session(word)
-            elif repl is not None:
-                word_map.append((word, repl))
-                for wrd in repl.split():
-                    russian.add_to_session(wrd)
+            elif russian.check(ocv := word.translate(failureOCV)):
+                word_map.append((word, ocv))
+            else:
+                suggested = russian.suggest(word) 
+                prefixed = [*set(
+                    [wrd for wrd in good if wrd.startswith(word)] +
+                    [wrd for _, r in word_map 
+                         for wrd in r.split() 
+                         if wrd.startswith(word)]
+                )]
+                
+                for wrd in prefixed:
+                    if wrd not in suggested:
+                        suggested.append(wrd)
 
-        processed += 1
-except KeyboardInterrupt:
-    pass
-finally:
-    clear_screen()
-    print(f"Done: \033[5;93m{processed}\033[0m")
+                word, repl = resolve(
+                    (word, cnt), 
+                    suggested
+                )
+                if word == repl:
+                    good.append(word)
+                    russian.add_to_session(word)
+                elif repl is not None:
+                    word_map.append((word, repl))
+                    for wrd in repl.split():
+                        russian.add_to_session(wrd)
+
+            processed += 1
+    except KeyboardInterrupt:
+        pass
+    finally:
+        clear_screen()
+        print(f"Done: \033[5;93m{processed}\033[0m")

@@ -2,6 +2,8 @@ import nltk
 from nltk.tokenize import word_tokenize
 import pymorphy2
 
+from manual_scan import load_save
+
 morph = pymorphy2.MorphAnalyzer()
 
 def remove_symbols(text):
@@ -24,8 +26,21 @@ def get_words(text):
     normalized = [x.normal_form for x in second_pass]
     return set(normalized)
 
-def food_codes(text):
-    text.lower()
+def after_manual_scan(f):
+    good, word_map, processed = load_save()
+    word_map = {x:y.split() for (x, y) in word_map}
+    def wrapped(text):
+        result = []
+        for word in f(text):
+            if word in good:
+                result.append(word)
+            elif word in word_map:
+                result.extend(word_map[word])
+        return result
+    return wrapped
+
+
+
 
 if __name__ == "__main__":
     print(get_words("""
