@@ -276,8 +276,9 @@ def parse_price(price):
         return extract_float(price), "кг"
     raise ValueError
 
-elems, data = grab_data()
-with open("word_freq", "w") as file:
-    file.write("\n".join([f"{noun} {elems[noun]}" for noun in elems]))
-with open("raw_data", "w") as file:
-    file.write(str(data))
+if __name__ == "__main__":
+    elems, data = grab_data()
+    with open("word_freq", "w") as file:
+        file.write("\n".join([f"{noun} {elems[noun]}" for noun in elems]))
+    with open("raw_data", "w") as file:
+        file.write(str(data))
